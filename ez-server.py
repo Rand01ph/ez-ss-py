@@ -17,7 +17,22 @@ server_sock.listen(1)
 
 
 def handle_tcp(client, remote):
-    pass
+    try:
+        while True:
+            print("handle_tcp")
+            client_data = client.recv(1024 * 100)
+            if len(client_data) > 0:
+                print("client_data is {}".format(client_data))
+                remote.sendall(client_data)
+
+            remote_data = remote.recv(1024 * 1000)
+            if len(remote_data) > 0:
+                print("remote_data is {}".format(remote_data))
+                client.sendall(remote_data)
+    except KeyboardInterrupt:
+        client.close()
+        remote.close()
+
 
 while True:
     try:
@@ -46,7 +61,7 @@ while True:
             | 1  |  1  | X'00' |  1   | Variable |    2     |
             +----+-----+-------+------+----------+----------+
         """
-        ver, cmd, rsv, atype = connection.recv(1),connection.recv(1),connection.recv(1),connection.recv(1)
+        ver, cmd, rsv, atype = connection.recv(1), connection.recv(1), connection.recv(1), connection.recv(1)
         print("the protocal ver {}, cmd {}, rsv {}, atype {}".format(ver, cmd, rsv, atype))
 
         if ord(cmd) is not 1:
@@ -59,6 +74,7 @@ while True:
         elif ord(atype) == 3:
             addr_len = ord(connection.recv(1))
             remote_host = connection.recv(addr_len)
+            print("remote_host is {0}".format(remote_host))
             remote_addr = socket.gethostbyname(remote_host)
             remote_port = struct.unpack("!H", connection.recv(2))[0]
         else:
@@ -76,7 +92,8 @@ while True:
 
         reply = b"\x05\x00\x00\x01" + socket.inet_aton("0.0.0.0") + struct.pack("!H", 9998)
         connection.send(reply)
+
         handle_tcp(connection, remote_sock)
 
-    except KeyboardInterrupt:
+    finally:
         server_sock.close()
