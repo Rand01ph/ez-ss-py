@@ -15,19 +15,29 @@ server_sock.bind(server_address)
 # Listen for incoming connections
 server_sock.listen(1)
 
+# curl -vv -x socks5h://127.0.0.1:10000 www.baidu.com
 
 def handle_tcp(client, remote):
     try:
+        print("handle_tcp")
         while True:
-            print("handle_tcp")
             client_data = client.recv(1024 * 100)
             if len(client_data) > 0:
                 print("client_data is {}".format(client_data))
                 remote.sendall(client_data)
 
-            remote_data = remote.recv(1024 * 1000)
-            if len(remote_data) > 0:
+            remote_data = []
+            while True:
+                print("begin to recv from remote")
+                chunk = remote.recv(1024 * 100)
+                print("chunk is {}".format(chunk))
+                if len(chunk) <= 0:
+                    break
+                else:
+                    remote_data.append(chunk)
                 print("remote_data is {}".format(remote_data))
+            print("final remote_data is {}".format(remote_data))
+            if remote_data:
                 client.sendall(remote_data)
     except KeyboardInterrupt:
         client.close()
