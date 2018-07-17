@@ -38,7 +38,9 @@ def handle_tcp(client, remote):
                 print("remote_data is {}".format(remote_data))
             print("final remote_data is {}".format(remote_data))
             if remote_data:
+                remote_data = b''.join(remote_data)
                 client.sendall(remote_data)
+                break
     except KeyboardInterrupt:
         client.close()
         remote.close()
