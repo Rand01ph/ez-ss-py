@@ -10,32 +10,45 @@ import threading
 
 # curl -vv -x socks5h://127.0.0.1:10000 www.baidu.com
 
-def handle_tcp(client, remote):
-    try:
-        print("handle_tcp")
-        fd_list = [client, remote]
-        while True:
-            client_data = client.recv(1024 * 100)
-            if len(client_data) > 0:
-                print("client_data is {}".format(client_data))
-                remote.sendall(client_data)
+kq = select.kqueue()
 
-            remote_data = []
-            while True:
-                print("begin to recv from remote")
-                chunk = remote.recv(1024 * 100)
-                print("chunk is {}".format(chunk))
-                if len(chunk) <= 0:
-                    break
-                else:
-                    remote_data.append(chunk)
-                print("remote_data is {}".format(remote_data))
-            print("final remote_data is {}".format(remote_data))
-            if remote_data:
-                remote_data = b''.join(remote_data)
-                client.sendall(remote_data)
-                break
-    except KeyboardInterrupt:
+
+def handle_tcp(client, remote):
+    """
+
+    :param client:
+    :type client: socket.socket
+    :param remote:
+    :type remote: socket.socket
+    :return:
+    """
+    events = [
+        select.kevent(client.fileno(), select.KQ_FILTER_READ),
+        select.kevent(remote.fileno(), select.KQ_FILTER_READ)
+    ]
+    try:
+        while True:
+            r_events = kq.control(events, 1)
+            for r in r_events:
+                if r.ident == client.fileno():
+                    print("data from client")
+                    client_data = client.recv(1024 * 100)
+                    if len(client_data) > 0:
+                        print("client_data is {}".format(client_data))
+                        remote.sendall(client_data)
+                    else:
+                        break
+                elif r.ident == remote.fileno():
+                    print("data from remote")
+                    remote_data = remote.recv(1024 * 100)
+                    if len(remote_data) > 0:
+                        print("remote_data is {}".format(remote_data))
+                        client.sendall(remote_data)
+                    else:
+                        break
+    except Exception as e:
+        raise e
+    finally:
         client.close()
         remote.close()
 
@@ -120,3 +133,6 @@ def main():
     except KeyboardInterrupt:
         server_sock.close()
 
+
+if __name__ == '__main__':
+    main()
